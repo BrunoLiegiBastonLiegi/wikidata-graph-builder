@@ -1,4 +1,4 @@
-import requests, time
+import requests, time, argparse
 
 from itertools import permutations
 
@@ -24,8 +24,8 @@ SPARQL_ENDPOINT = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 def find_relations(heads: list[str], tails: list[str]) -> list[str]:
     if len(heads) != len(tails):
         raise RuntimeError
-    triplets = "\n".join([
-        f"wd:{h} ?r{i} wd:{t}."
+    triplets = "\n  ".join([
+        f"OPTIONAL {{ wd:{h} ?r{i} wd:{t}. }}"
         for i, (h,t) in enumerate(zip(heads, tails))
     ])
     r_vars = " ".join([f"?r{i}" for i in range(len(heads))])
@@ -38,26 +38,28 @@ def find_relations(heads: list[str], tails: list[str]) -> list[str]:
         )
         status = r.status_code
         if status == 429:
-            print("429: too many requests")
-            print(r)
-            print(dir(r))
-            time.sleep(0.1)
+            print("> 429: too many requests.")
+            time.sleep(3)
         elif status == 200:
+            bindings = r.json()["results"]["bindings"]
             relations = []
-            for i in range(len(heads)):
-                bindings = r.json()["results"]["bindings"]
-                if len(bindings) > 0:
-                    relations.append(bindings[0][f"r{i}"]["value"])
-                else:
-                    relations.append(None)
+            if len(bindings) > 0:
+                bindings = bindings[0]
+                for i in range(len(heads)):
+                    if f"r{i}" in bindings:
+                        relations.append(bindings[f"r{i}"]["value"])
+                    else:
+                        relations.append(None)
+            else:
+                relations = [None for _ in range(len(heads))]    
             time.sleep(0.3)
             return relations
         else:
-            print(status)
+            print(f"> {status}: error.")
             raise RuntimeError
 
 
-def construct_graph_from_entities(entities: list[str], batchsize: int=128) -> list[tuple]:
+def construct_graph_from_entities(entities: list[str], batchsize: int=100) -> list[tuple]:
     head_tail_pairs = list(permutations(entities, 2))
     triplets = []
     for i in range(0, len(head_tail_pairs), batchsize):
@@ -67,6 +69,7 @@ def construct_graph_from_entities(entities: list[str], batchsize: int=128) -> li
             if r is not None:
                 triplets.append((h, r, t))
         print(f"> Searching for relations in Wikidata. ({i}/{len(head_tail_pairs)})", end="\r")
+    print("\n")
     return triplets
 
 
@@ -76,7 +79,11 @@ def dump_graph(triplets: list, path: str):
             f.write(" ".join(t) + "\n")
         
 if __name__ == "__main__":
-    print(find_relations(["Q2","Q513"], ["Q544","Q217119"]))
-    l = 1000 * ["Q2","Q513","Q544","Q217119"]
-    print(len(l))
-    construct_graph_from_entities(l)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--entities")
+    parser.add_argument("--outfile")
+    args = parser.parse_args()
+    
+    entities = load_entities(ars.entities)
+    triplets = construct_graph_from_entities(entities)
+    dump_graph(triplets, args.outfile)
