@@ -52,7 +52,7 @@ def find_relations(heads: list[str], tails: list[str]) -> list[str]:
                         relations.append(None)
             else:
                 relations = [None for _ in range(len(heads))]    
-            time.sleep(0.3)
+            time.sleep(0.5)
             return relations
         else:
             print(f"> {status}: error.")
@@ -84,6 +84,6 @@ if __name__ == "__main__":
     parser.add_argument("--outfile")
     args = parser.parse_args()
     
-    entities = load_entities(ars.entities)
+    entities = load_entities(args.entities)
     triplets = construct_graph_from_entities(entities)
     dump_graph(triplets, args.outfile)
