@@ -1,10 +1,12 @@
-import argparse, json
+import argparse, json, re
 
 def load(filename):
     _dict = {}
     with open(filename, "r") as f:
         for line in f.read().split("\n"):
-            _id, data = line.split(" ")
+            _match = re.search("Q[0-9]+\s", line)
+            _id = line[:_match.span()[1] - 1]
+            data = line[_match.span()[1] + 1:]
             if _id in _dict:
                 _dict[_id].append(data)
             else:
@@ -27,9 +29,16 @@ if __name__ == "__main__":
         
     prepared_data = {}
     for _id in entities:
+        caption = descriptions.get(_id, None)
+        label = names.get(_id, None)
+        if caption is not None:
+            caption = caption[0]
+        if label is not None:
+            label = label[0]
         prepared_data[_id] = {
             "wikidata_id": _id,
-            "caption": descriptions.get(_id, names.get(_id, None))[0],
+            "caption": caption,
+            "label": label,
             "entity_id": _id,
         }
 
