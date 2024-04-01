@@ -89,7 +89,7 @@ def construct_graph_from_entities(entities: set[str], query=False, batchsize: in
         print(f"> Searching for relations in Wikidata. ({i}/{len(head_tail_pairs)})", end="\r")
     print("\n")
     return triplets
-
+            
 
 def dump_graph(triplets: list, path: str):
     with open(path, "w") as f:
