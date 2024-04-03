@@ -1,16 +1,23 @@
 import argparse, json, re
 
-def load(filename):
+def load(filename, as_list=True):
     _dict = {}
     with open(filename, "r") as f:
         for line in f.read().split("\n"):
-            _match = re.search("Q[0-9]+\s", line)
+            if len(line) <= 1:
+                continue
+            _match = re.search("[QP][0-9]+\s", line)
+            if _match is None:
+                breakpoint()
             _id = line[:_match.span()[1] - 1]
-            data = line[_match.span()[1] + 1:]
-            if _id in _dict:
-                _dict[_id].append(data)
+            data = line[_match.span()[1]:]
+            if as_list:
+                if _id in _dict:
+                    _dict[_id].append(data)
+                else:
+                    _dict[_id] = [data]
             else:
-                _dict[_id] = [data]
+                _dict[_id] = data
     return _dict
 
 if __name__ == "__main__":

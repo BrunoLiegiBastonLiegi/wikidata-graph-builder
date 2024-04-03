@@ -1,6 +1,10 @@
 # wikidata dump
 *.bz2
 
+# entity labels
+wikidata/names.txt
+wikidata/names.txt.tar.gz
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
