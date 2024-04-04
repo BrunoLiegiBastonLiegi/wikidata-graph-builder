@@ -27,7 +27,7 @@ def dump(entities: list[str], descriptions: list[str], filename: str):
                 f.write("\n")
 
 
-def check_for_redirections(entities: list[str]):
+def redirections_query(entities: list[str]):
     _vars = [f"?r{i}" for i in range(len(entities))]
     expr = "\n".join([
         f"OPTIONAL {{ wd:{e} owl:sameAs {_vars[i]}. }}"
@@ -52,6 +52,11 @@ def check_for_redirections(entities: list[str]):
                     if data[d] is None:
                         data[d] = val["value"]
             _, redirections = zip(*sorted(list(data.items()), key=lambda x: int(x[0].replace("r", ""))))
+            redirections = list(redirections)
+            for i in range(len(redirections)):
+                if redirections[i] is not None:
+                    redirections[i] = redirections[i].replace("http://www.wikidata.org/entity/", "")
+            redirections = tuple(redirections)
             time.sleep(0.5)
         else:
             print(f"> {status}: error.")
@@ -59,7 +64,7 @@ def check_for_redirections(entities: list[str]):
     return redirections
 
                 
-def descriptions_query(entities: list[str]) -> list[str]:
+def descriptions_query(entities: list[str], check_for_redirections: bool=True) -> list[str]:
     _vars = [f"?d{i}" for i in range(len(entities))]
     expr = "\n".join([
         f"OPTIONAL {{ wd:{e} schema:description {_vars[i]}.\nFILTER (langMatches( lang({_vars[i]}), \"EN\" )). }}"
@@ -88,10 +93,18 @@ def descriptions_query(entities: list[str]) -> list[str]:
         else:
             print(f"> {status}: error.")
             raise RuntimeError
+    none_idx = [i for i,d in enumerate(descriptions) if d is None or "Wikimedia" in d]
+    if check_for_redirections and len(none_idx) > 0:
+        redirected_ents = redirections_query([entities[i] for i in none_idx])
+        redirected_desc = descriptions_query(redirected_ents, check_for_redirections=False)
+        descriptions = list(descriptions)
+        for i, desc in zip(none_idx, redirected_desc):
+            descriptions[i] = desc
+        descriptions = tuple(descriptions)
     return descriptions
 
 
-def labels_query(entities: list[str]) -> list[str]:
+def labels_query(entities: list[str], check_for_redirections: bool=True) -> list[str]:
     _vars = [f"?l{i}" for i in range(len(entities))]
     expr = "\n".join([
         f"OPTIONAL {{ wd:{e} rdfs:label {_vars[i]}.\nFILTER (langMatches( lang({_vars[i]}), \"EN\" )). }}"
@@ -116,10 +129,21 @@ def labels_query(entities: list[str]) -> list[str]:
                     if data[l] is None:
                         data[l] = val["value"]
             _, labels = zip(*sorted(list(data.items()), key=lambda x: int(x[0].replace("l", ""))))
-            time.sleep(0.5)
+            time.sleep(1)
         else:
             print(f"> {status}: error.")
             raise RuntimeError
+    none_idx = [i for i,l in enumerate(labels) if l is None]
+    if check_for_redirections and len(none_idx) > 0:
+        redirected_ents = redirections_query([entities[i] for i in none_idx])
+        try:
+            redirected_labels = labels_query(redirected_ents, check_for_redirections=False)
+        except:
+            breakpoint()
+        labels = list(labels)
+        for i, lab in zip(none_idx, redirected_labels):
+            labels[i] = lab
+        labels = tuple(labels)
     return labels
 
 
@@ -179,7 +203,7 @@ if __name__ == "__main__":
         descriptions_bkup = load(f"{entities_dir}/descriptions.txt", as_list=False)
     except FileNotFoundError:
         descriptions_bkup = {}
-    id_to_label = dict(zip(get_labels(list(entities))))
+    id_to_label = dict(zip(*get_labels(list(entities))))
     entity_ids, descriptions = get_descriptions(list(entities))
 
     if args.generate_missing:
