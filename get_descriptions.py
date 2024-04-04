@@ -26,9 +26,40 @@ def dump(entities: list[str], descriptions: list[str], filename: str):
             if i != len(entities):
                 f.write("\n")
 
+
+def check_for_redirections(entities: list[str]):
+    _vars = [f"?r{i}" for i in range(len(entities))]
+    expr = "\n".join([
+        f"OPTIONAL {{ wd:{e} owl:sameAs {_vars[i]}. }}"
+        for i, e in enumerate(entities)
+    ])       
+    query = QUERY.format(_vars=" ".join(_vars), expr=expr)
+    status = None
+    while status != 200:
+        r = requests.get(
+            SPARQL_ENDPOINT,
+            params = {'format': 'json', 'query': query}
+        )
+        status = r.status_code
+        if status == 429:
+            print("> 429: too many requests.")
+            time.sleep(3)
+        elif status == 200:
+            bindings = r.json()["results"]["bindings"]
+            data = {f"r{i}": None for i in range(len(entities))}
+            for b in bindings:
+                for d, val in b.items():
+                    if data[d] is None:
+                        data[d] = val["value"]
+            _, redirections = zip(*sorted(list(data.items()), key=lambda x: int(x[0].replace("r", ""))))
+            time.sleep(0.5)
+        else:
+            print(f"> {status}: error.")
+            raise RuntimeError
+    return redirections
+
                 
 def descriptions_query(entities: list[str]) -> list[str]:
-    descriptions = []
     _vars = [f"?d{i}" for i in range(len(entities))]
     expr = "\n".join([
         f"OPTIONAL {{ wd:{e} schema:description {_vars[i]}.\nFILTER (langMatches( lang({_vars[i]}), \"EN\" )). }}"
@@ -52,13 +83,44 @@ def descriptions_query(entities: list[str]) -> list[str]:
                 for d, val in b.items():
                     if data[d] is None:
                         data[d] = val["value"]
-            _, desc = zip(*sorted(list(data.items()), key=lambda x: int(x[0].replace("d", ""))))
-            descriptions += desc
+            _, descriptions = zip(*sorted(list(data.items()), key=lambda x: int(x[0].replace("d", ""))))
             time.sleep(0.5)
         else:
             print(f"> {status}: error.")
             raise RuntimeError
     return descriptions
+
+
+def labels_query(entities: list[str]) -> list[str]:
+    _vars = [f"?l{i}" for i in range(len(entities))]
+    expr = "\n".join([
+        f"OPTIONAL {{ wd:{e} rdfs:label {_vars[i]}.\nFILTER (langMatches( lang({_vars[i]}), \"EN\" )). }}"
+        for i, e in enumerate(entities)
+    ])
+    query = QUERY.format(_vars=" ".join(_vars), expr=expr)
+    status = None
+    while status != 200:
+        r = requests.get(
+            SPARQL_ENDPOINT,
+            params = {'format': 'json', 'query': query}
+        )
+        status = r.status_code
+        if status == 429:
+            print("> 429: too many requests.")
+            time.sleep(3)
+        elif status == 200:
+            bindings = r.json()["results"]["bindings"]
+            data = {f"l{i}": None for i in range(len(entities))}
+            for b in bindings:
+                for l, val in b.items():
+                    if data[l] is None:
+                        data[l] = val["value"]
+            _, labels = zip(*sorted(list(data.items()), key=lambda x: int(x[0].replace("l", ""))))
+            time.sleep(0.5)
+        else:
+            print(f"> {status}: error.")
+            raise RuntimeError
+    return labels
 
 
 PROMPT = PromptTemplate.from_template("A Wikidata entity is provided below. Generate a short one-sentence long description of the entity.\nEntity: {entity}")
@@ -82,6 +144,23 @@ def get_descriptions(entities: set[str] | list[str], batchsize: int=20) -> list[
             dump(list(descriptions_bkup.keys()) + missing_ents[:i + batchsize], descriptions, f"{entities_dir}/descriptions.txt")
     print("\n")
     return ent_ids, descriptions
+
+
+def get_labels(entities: set[str] | list[str], batchsize: int=20) -> list[str]:
+    global entities_dir, labels_bkup
+    missing_ents = [e for e in entities if e not in labels_bkup]
+    
+    labels = list(labels_bkup.values())
+    ent_ids = list(labels_bkup.keys())
+    for i in range(0, len(missing_ents), batchsize):
+        ents = missing_ents[i:i + batchsize]
+        labels += labels_query(ents)
+        ent_ids = missing_ents[:i + batchsize]
+        print(f"({i + len(labels_bkup)}/{len(entities)})", end="\r")
+        if i % 10 == 0:
+            dump(list(labels_bkup.keys()) + missing_ents[:i + batchsize], labels, f"{entities_dir}/labels.txt")
+    print("\n")
+    return ent_ids, labels
         
 
 if __name__ == "__main__":
@@ -92,13 +171,16 @@ if __name__ == "__main__":
 
     entities = set(load_entities(args.entities))
     entities_dir = os.path.dirname(args.entities)
-    entity_labels = load("./wikidata/names.txt", as_list=False)
+    try:
+        labels_bkup = load(f"{entities_dir}/labels.txt", as_list=False)
+    except FileNotFoundError:
+        labels_bkup = {}
     try:
         descriptions_bkup = load(f"{entities_dir}/descriptions.txt", as_list=False)
     except FileNotFoundError:
         descriptions_bkup = {}
+    id_to_label = dict(zip(get_labels(list(entities))))
     entity_ids, descriptions = get_descriptions(list(entities))
-    
 
     if args.generate_missing:
         llm = Ollama(model="llama2:13b")
