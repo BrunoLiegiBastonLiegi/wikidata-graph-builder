@@ -17,13 +17,13 @@ SELECT {_vars} WHERE {{
 }}"""
 
 
-def dump(entities: list[str], descriptions: list[str], filename: str):
+def dump(ids: list[str], data: list[str], filename: str):
     with open(filename, "w") as f:
-        for i, (e, d) in enumerate(zip(entities, descriptions)):
+        for i, (e, d) in enumerate(zip(ids, data)):
             if d is None:
                 d = str(None)
             f.write(f"{e} {d}")
-            if i != len(entities):
+            if i != len(ids):
                 f.write("\n")
 
 
@@ -95,6 +95,7 @@ def descriptions_query(entities: list[str], check_for_redirections: bool=True) -
             raise RuntimeError
     none_idx = [i for i,d in enumerate(descriptions) if d is None or "Wikimedia" in d]
     if check_for_redirections and len(none_idx) > 0:
+        breakpoint()
         redirected_ents = redirections_query([entities[i] for i in none_idx])
         redirected_desc = descriptions_query(redirected_ents, check_for_redirections=False)
         descriptions = list(descriptions)
@@ -136,10 +137,7 @@ def labels_query(entities: list[str], check_for_redirections: bool=True) -> list
     none_idx = [i for i,l in enumerate(labels) if l is None]
     if check_for_redirections and len(none_idx) > 0:
         redirected_ents = redirections_query([entities[i] for i in none_idx])
-        try:
-            redirected_labels = labels_query(redirected_ents, check_for_redirections=False)
-        except:
-            breakpoint()
+        redirected_labels = labels_query(redirected_ents, check_for_redirections=False)
         labels = list(labels)
         for i, lab in zip(none_idx, redirected_labels):
             labels[i] = lab
@@ -150,6 +148,7 @@ def labels_query(entities: list[str], check_for_redirections: bool=True) -> list
 PROMPT = PromptTemplate.from_template("A Wikidata entity is provided below. Generate a short one-sentence long description of the entity.\nEntity: {entity}")
 
 def generate_missing_description(entity: str, llm):
+    breakpoint()
     return llm.invoke(PROMPT.format(entity=entity))
 
 
@@ -208,20 +207,14 @@ if __name__ == "__main__":
 
     if args.generate_missing:
         llm = Ollama(model="llama2:13b")
-        entity_labels = [entity_labels[i] for i in entity_ids]
+        entity_labels = [id_to_label[i] for i in entity_ids]
         for i, d in enumerate(descriptions):
             if d is None or d == "None" or "Wikimedia" in d:
-                breakpoint()
+                print(entity_ids[i])
                 descriptions[i] = generate_missing_description(entity_labels[i], llm)
 
     outfile = f"{entities_dir}/descriptions"
     if args.generate_missing:
         outfile = f"{outfile}_generated_missing"
     outfile = f"{outfile}.txt"
-    with open(outfile, "w") as f:
-        for i, (e, d) in enumerate(zip(entities, descriptions)):
-            if d is None:
-                d = str(None)
-            f.write(f"{e} {d}")
-            if i != len(entities):
-                f.write("\n")
+    dump(entities, descriptions, outfile)
