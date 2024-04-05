@@ -4,6 +4,7 @@
 # entity labels
 wikidata/names.txt
 wikidata/names.txt.tar.gz
+wikidata/name_labels.txt.tar.gz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

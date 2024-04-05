@@ -14,7 +14,8 @@ PREFIX wd: <http://www.wikidata.org/entity/>
 
 SELECT {_vars} WHERE {{
 {expr}
-}}"""
+}}
+LIMIT 20"""
 
 
 def dump(ids: list[str], data: list[str], filename: str):
@@ -89,15 +90,17 @@ def descriptions_query(entities: list[str], check_for_redirections: bool=True) -
                     if data[d] is None:
                         data[d] = val["value"]
             _, descriptions = zip(*sorted(list(data.items()), key=lambda x: int(x[0].replace("d", ""))))
-            time.sleep(0.5)
+            time.sleep(1)
         else:
+            breakpoint()
             print(f"> {status}: error.")
             raise RuntimeError
     none_idx = [i for i,d in enumerate(descriptions) if d is None or "Wikimedia" in d]
     if check_for_redirections and len(none_idx) > 0:
-        breakpoint()
         redirected_ents = redirections_query([entities[i] for i in none_idx])
-        redirected_desc = descriptions_query(redirected_ents, check_for_redirections=False)
+        none_idx = [none_idx[i] for i,e in enumerate(redirected_ents) if e is not None]
+        redirected_ents = [e for e in redirected_ents if e is not None]
+        redirected_desc = descriptions_query(redirected_ents, check_for_redirections=False) if len(none_idx) > 0 else []
         descriptions = list(descriptions)
         for i, desc in zip(none_idx, redirected_desc):
             descriptions[i] = desc
