@@ -1,0 +1,5 @@
+# Entities
+
+Total number of entities: 80371
+Considering both the "correct_id" and "wrong_id" found in the train, test and dev files.
+However, 258 of them appear to not correspond to any entity in wikidata, maybe due to the entities being moved to a new identifier (weirdly without keeping any trace of the old one though, I believe the common practice in wikidata for those cases is to use the property `owl:sameAs` to link the old ids to the new ones). Out of these 258 entities, 250 of them belong to the "wrong_id" annotations and 8 of them to the "correct_id" instead.

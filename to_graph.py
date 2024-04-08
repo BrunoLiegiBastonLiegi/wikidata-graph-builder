@@ -113,19 +113,26 @@ if __name__ == "__main__":
         rdf_triplets = None
         do_query = True
     triplets = construct_graph_from_entities(entities, query=do_query)
+
     graph = nx.DiGraph()
     graph.add_nodes_from(entities)
     for head, rel, tail in triplets:
         graph.add_edge(head, tail, type=rel)
+        
+    connected_components = nx.connected_components(graph.to_undirected())
+    n_connected_components = nx.number_connected_components(graph.to_undirected())
     print(f"""
     -------------- Graph --------------
     
     > Number of Nodes: {len(graph.nodes)}
     > Number of Edges: {len(graph.edges)}
-    > Number of connected Nodes: {nx.number_connected_components(graph.to_undirected())}
+
+    > Number of connected Nodes: {n_connected_components}
+    > Top 100 connected clusters size: {[len(c) for c in sorted(connected_components, key=len, reverse=True)][:100]}
     
     -----------------------------------
     """)
+        
     if args.visualize:
         # visualize the graph
         fig, ax = plt.subplots(figsize=(9, 9), facecolor='lightskyblue', layout='constrained')

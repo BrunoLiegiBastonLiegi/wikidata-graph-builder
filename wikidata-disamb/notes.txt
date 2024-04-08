@@ -1,0 +1,105 @@
+# Entities
+
+Total number of entities: 80371
+Considering both the "correct_id" and "wrong_id" found in the train, test and dev files.
+However, 258 of them appear to not correspond to any entity in wikidata, maybe due to the entities being moved to a new identifier (without keeping any trace of the old one though, which is weird since I believe the common practice in wikidata for those cases is to use the property `owl:sameAs` to link the old id to the new one). Out of these 258 entities, 250 of them belong to the "wrong_id" annotations and 8 of them to the "correct_id" instead.
+
+Unfortunately, for the 250 entities from the "wrong_id" annotations we cannot recover any information and most likely we will need to discard them. Whereas, for the 8 entities that belong to the "correct_id" set, we can at least resort to the annotations found in the dataset:
+
+[{'correct_id': 'Q6886875',
+  'string': 'mobile infantry',
+  'text': ' is about a young soldier named Juan "Johnnie" Rico and his exploits in the Mobile Infantry, a futuristic military unit equipped with powered armor. Rico\'s military career progresses ',
+  'wrong_id': 'Q6886877'},
+ {'correct_id': 'Q7574495',
+  'string': 'special circumstances',
+  'text': ' the Culture but was recruited into it by Special Circumstances agent Diziet Sma to work as an operative intervening in less advanced civilizations. The novel recounts several of ',
+  'wrong_id': 'Q7574795'},
+ {'correct_id': 'Q7763032',
+  'string': 'the secret life of...',
+  'text': " The Secret Life Of..., when host Jim O'Connor expressed disbelief that a restaurant owner who'd named a dish after Sharpton actually knew him. During the 2005 Tony Awards, Sharpton appeared in a ",
+  'wrong_id': 'Q1091808'},
+ {'correct_id': 'Q3302483',
+  'string': 'airway',
+  'text': ' first airway branches that no longer contain cartilage. They are branches of the bronchi, and are smaller than one millimeter in diameter. There are no glands or cartilage in any ',
+  'wrong_id': 'Q4699063'},
+ {'correct_id': 'Q3302483',
+  'string': 'airway',
+  'text': 'airway obstruction has been associated with bedwetting. Snoring and enlarged tonsils or adenoids are a sign of potential sleep apnea problems. Unconfirmed, controversial, or mixed causes. Heavy sleeping ',
+  'wrong_id': 'Q1423981'},
+ {'correct_id': 'Q175348',
+  'string': 'emmanuelle',
+  'text': ' such as Emmanuelle and Alice in Wonderland., received positive reviews from noted critics such as Roger Ebert. Since the rise in popularity of home video in the 1980s, ',
+  'wrong_id': 'Q3052927'},
+ {'correct_id': 'Q7734056',
+  'string': 'the firm',
+  'text': " underworld organisation of Walford known only as The Firm. In the beginning of the series, Den's criminal connections were fairly low-key, being merely a wheeler-dealer who flogged cheap ",
+  'wrong_id': 'Q25022157'},
+ {'correct_id': 'Q7384338',
+  'string': 'ryan miller',
+  'text': " to Cyan. Rand Miller, co-founder and CEO. Robyn Miller, co-founder and former designer/director. Richard Vander Wende, former designer/director. Richard A. Watson, lead programmer and D'ni historian. Ryan Miller. Martin O'Donnell. ",
+  'wrong_id': 'Q24005534'},
+ {'correct_id': 'Q7539314',
+  'string': 'slavey',
+  'text': ' is. The lake shares its name with the Slavey North American Indians. Towns around the lake include: Yellowknife, Fort Providence, Hay River and Fort Resolution. The only ',
+  'wrong_id': 'Q37467036'}]
+
+We disambiguated by hand these 8 entities, looking for plausible descriptions and close enough entities in wikidata, resulting in the following updated annotations:
+
+{
+  "Q6886875": {
+    "original_id": "Q6886875",
+    "alternative_id": null,
+    "label": "mobile infantry",
+    "mention": " is about a young soldier named Juan \"Johnnie\" Rico and his exploits in the Mobile Infantry, a futuristic military unit equipped with powered armor. Rico's military career progresses ",
+    "description": "The Mobile Infantry is a fictional elite planetary fighting force of the Terran Federation in the novel Starship Troopers. "
+  },
+  "Q7574495": {
+    "original_id": "Q7574495",
+    "alternative_id": null,
+    "label": "special circumstances",
+    "mention": " the Culture but was recruited into it by Special Circumstances agent Diziet Sma to work as an operative intervening in less advanced civilizations. The novel recounts several of ",
+    "description": "Special Circumstances, abbreviated SC, is a \"secret service\"-type organisation that exists within the fictional anarchist utopian science fiction civilisation known as the Culture."
+  },
+  "Q7763032": {
+    "original_id": "Q7763032",
+    "alternative_id": null,
+    "label": "the secret life of...",
+    "mention": " The Secret Life Of..., when host Jim O'Connor expressed disbelief that a restaurant owner who'd named a dish after Sharpton actually knew him. During the 2005 Tony Awards, Sharpton appeared in a ",
+    "description": "The Secret Life of... is a television show on the Food Network originally hosted by Jim O'Connor, then later by George Duran."
+  },
+  "Q3302483": {
+    "original_id": "Q3302483",
+    "alternative_id": "Q13400765",
+    "label": "airway",
+    "mention": "airway obstruction has been associated with bedwetting. Snoring and enlarged tonsils or adenoids are a sign of potential sleep apnea problems. Unconfirmed, controversial, or mixed causes. Heavy sleeping ",
+    "description": "the part of the anatomy involved with the process of respiration"
+  },
+  "Q175348": {
+      "original_id": "Q175348",
+      "alternative_id": null,
+    "label": "emmanuelle",
+    "mention": " such as Emmanuelle and Alice in Wonderland., received positive reviews from noted critics such as Roger Ebert. Since the rise in popularity of home video in the 1980s, ",
+    "description": "Emmanuelle is a silly, classy, enjoyable erotic film that became an all-time box-office success in France."
+  },
+  "Q7734056": {
+    "original_id": "Q7734056",
+    "alternative_id": null,
+    "label": "the firm",
+    "mention": " underworld organisation of Walford known only as The Firm. In the beginning of the series, Den's criminal connections were fairly low-key, being merely a wheeler-dealer who flogged cheap ",
+    "description": "The Firm are an infamous gangland organization who served as the main antagonists of the BBC British soap opera EastEnders."
+  },
+  "Q7384338": {
+    "original_id": "Q7384338",
+    "alternative_id": "Q1342975", # this is not actually Ryan Miller, who is not present in wikidata, but his brother Robyn Miller
+    "label": "ryan miller",
+    "mention": " to Cyan. Rand Miller, co-founder and CEO. Robyn Miller, co-founder and former designer/director. Richard Vander Wende, former designer/director. Richard A. Watson, lead programmer and D'ni historian. Ryan Miller. Martin O'Donnell. ",
+    "description": "Ryan Miller is the younger brother of Rand Miller and Robyn Miller, the co-founders of Cyan Worlds."
+  },
+  "Q7539314": {
+    "original_id": "Q7539314",
+    "alternative_id": "Q1151353",
+    "label": "slavey",
+    "mention": " is. The lake shares its name with the Slavey North American Indians. Towns around the lake include: Yellowknife, Fort Providence, Hay River and Fort Resolution. The only ",
+    "description": "First Nations aboriginal people"
+  }
+}
