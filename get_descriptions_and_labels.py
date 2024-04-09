@@ -15,6 +15,8 @@ SELECT {_vars} WHERE {{
 
 
 def dump(ids: list[str], data: list[str], filename: str):
+    if len(ids) != len(data):
+        raise RuntimeError(f"ids and data have different lenghts: {len(ids)} and {len(data)}")
     with open(filename, "w") as f:
         for i, (e, d) in enumerate(zip(ids, data)):
             if d is None:
@@ -143,6 +145,7 @@ def labels_query(entities: list[str], check_for_redirections: bool=True) -> list
 
 
 def get_redirections(entities: set[str] | list[str], batchsize: int=20) -> list[str]:
+    print("> Looking for redirected entities")
     global entities_dir, redirections_bkup
     missing_ents = [e for e in entities if e not in redirections_bkup]
 
@@ -151,15 +154,17 @@ def get_redirections(entities: set[str] | list[str], batchsize: int=20) -> list[
     for i in range(0, len(missing_ents), batchsize):
         ents = missing_ents[i:i + batchsize]
         redirections += redirections_query(ents)
+        ent_ids += ents
         ent_labels = missing_ents[:i + batchsize]
         print(f"({i + len(redirections_bkup)}/{len(entities)})", end="\r")
         if i % (10 * batchsize) == 0:
-            dump(list(redirections_bkup.keys()) + missing_ents[:i + batchsize], redirections, f"{entities_dir}/redirections.txt")
+            dump(list(redirections_bkup.keys()) + missing_ents[:i + batchsize], redirections, f"{entities_dir}/../redirections.txt")
     print("\n")
     return ent_ids, redirections
 
 
 def get_descriptions(entities: set[str] | list[str], batchsize: int=20) -> list[str]:
+    print("> Collecting entity descriptions")
     global entities_dir, descriptions_bkup
     missing_ents = [e for e in entities if e not in descriptions_bkup]
     
@@ -168,6 +173,7 @@ def get_descriptions(entities: set[str] | list[str], batchsize: int=20) -> list[
     for i in range(0, len(missing_ents), batchsize):
         ents = missing_ents[i:i + batchsize]
         descriptions += descriptions_query(ents)
+        ent_ids += ents
         ent_labels = missing_ents[:i + batchsize]
         print(f"({i + len(descriptions_bkup)}/{len(entities)})", end="\r")
         if i % (10 * batchsize) == 0:
@@ -177,6 +183,7 @@ def get_descriptions(entities: set[str] | list[str], batchsize: int=20) -> list[
 
 
 def get_labels(entities: set[str] | list[str], batchsize: int=20) -> list[str]:
+    print("> Collecting entity labels")
     global entities_dir, labels_bkup
     missing_ents = [e for e in entities if e not in labels_bkup]
     
@@ -185,6 +192,7 @@ def get_labels(entities: set[str] | list[str], batchsize: int=20) -> list[str]:
     for i in range(0, len(missing_ents), batchsize):
         ents = missing_ents[i:i + batchsize]
         labels += labels_query(ents)
+        ent_ids += ents
         ent_ids = missing_ents[:i + batchsize]
         print(f"({i + len(labels_bkup)}/{len(entities)})", end="\r")
         if i % (10 * batchsize) == 0:
@@ -207,15 +215,18 @@ if __name__ == "__main__":
         except FileNotFoundError:
             return {}
 
-    redirections_bkup = load_backup(f"{entities_dir}/redirections.txt")
+    redirections_bkup = load_backup(f"{entities_dir}/../redirections.txt")
     labels_bkup = load_backup(f"{entities_dir}/labels.txt")
     descriptions_bkup = load_backup(f"{entities_dir}/descriptions.txt")
+    breakpoint()
+    entity_ids, redirections = get_redirections(list(entities))
+    outfile = f"{entities_dir}/../redirections.txt"
+    dump(entity_ids, redirections, outfile)
     
-    id_to_label = dict(zip(*get_labels(list(entities))))
-    entity_ids, descriptions = get_descriptions(list(entities))
+    entity_ids, labels = get_labels(list(entities))
+    outfile = f"{entities_dir}/labels.txt"
+    dump(entity_ids, labels, outfile)
 
-    outfile = f"{entities_dir}/descriptions"
-    if args.generate_missing:
-        outfile = f"{outfile}_generated_missing"
-    outfile = f"{outfile}.txt"
-    dump(entities, descriptions, outfile)
+    entity_ids, descriptions = get_descriptions(list(entities))
+    outfile = f"{entities_dir}/descriptions.txt"
+    dump(entity_ids, descriptions, outfile)

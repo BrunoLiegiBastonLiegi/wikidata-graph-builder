@@ -7,8 +7,6 @@ def load(filename, as_list=True):
             if len(line) <= 1:
                 continue
             _match = re.search("[QP][0-9]+\s", line)
-            if _match is None:
-                breakpoint()
             _id = line[:_match.span()[1] - 1]
             data = line[_match.span()[1]:]
             if as_list:

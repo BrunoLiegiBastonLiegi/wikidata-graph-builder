@@ -103,3 +103,8 @@ We disambiguated by hand these 8 entities, looking for plausible descriptions an
     "description": "First Nations aboriginal people"
   }
 }
+
+
+After redirection, the total 80371 entities reduced to 79788. This is due to some of the original entities being merged in wikidata to a single entity at some point. Indeed, 1558 of the original entities had a redirection to a new entity, but 583 of them were redirected to an already existing entity in the dataset. Thus, 80371 - 583 = 79788.
+
+Overall, after redirecting and manually annotating all the possible missing entities we ended up with 79539 entities. However, out of these entities, 901 of them did not have any description available, and 9890 of them had an apparently meaningless description such as `Wikimedia disambiguation page`.
