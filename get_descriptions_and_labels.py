@@ -14,14 +14,16 @@ SELECT {_vars} WHERE {{
 }}"""
 
 
-def dump(ids: list[str], data: list[str], filename: str):
-    if len(ids) != len(data):
+def dump(filename: str, ids: list[str], data: list[str] = None):
+    if data is not None and len(ids) != len(data):
         raise RuntimeError(f"ids and data have different lenghts: {len(ids)} and {len(data)}")
     with open(filename, "w") as f:
-        for i, (e, d) in enumerate(zip(ids, data)):
-            if d is None:
-                d = str(None)
-            f.write(f"{e} {d}")
+        items = zip(ids, data) if data is not None else ids
+        for i, item in enumerate(items):
+            if data is not None:
+                f.write(f"{item[0]} {str(item[1])}")
+            else:
+                f.write(f"{item}")
             if i != len(ids):
                 f.write("\n")
 
@@ -158,7 +160,7 @@ def get_redirections(entities: set[str] | list[str], batchsize: int=20) -> list[
         ent_labels = missing_ents[:i + batchsize]
         print(f"({i + len(redirections_bkup)}/{len(entities)})", end="\r")
         if i % (10 * batchsize) == 0:
-            dump(list(redirections_bkup.keys()) + missing_ents[:i + batchsize], redirections, f"{entities_dir}/../redirections.txt")
+            dump(f"{entities_dir}/../redirections.txt", list(redirections_bkup.keys()) + missing_ents[:i + batchsize], redirections)
     print("\n")
     return ent_ids, redirections
 
@@ -177,7 +179,7 @@ def get_descriptions(entities: set[str] | list[str], batchsize: int=20) -> list[
         ent_labels = missing_ents[:i + batchsize]
         print(f"({i + len(descriptions_bkup)}/{len(entities)})", end="\r")
         if i % (10 * batchsize) == 0:
-            dump(list(descriptions_bkup.keys()) + missing_ents[:i + batchsize], descriptions, f"{entities_dir}/descriptions.txt")
+            dump(f"{entities_dir}/descriptions.txt", list(descriptions_bkup.keys()) + missing_ents[:i + batchsize], descriptions)
     print("\n")
     return ent_ids, descriptions
 
@@ -196,7 +198,7 @@ def get_labels(entities: set[str] | list[str], batchsize: int=20) -> list[str]:
         ent_ids = missing_ents[:i + batchsize]
         print(f"({i + len(labels_bkup)}/{len(entities)})", end="\r")
         if i % (10 * batchsize) == 0:
-            dump(list(labels_bkup.keys()) + missing_ents[:i + batchsize], labels, f"{entities_dir}/labels.txt")
+            dump(f"{entities_dir}/labels.txt", list(labels_bkup.keys()) + missing_ents[:i + batchsize], labels)
     print("\n")
     return ent_ids, labels
         
@@ -221,12 +223,12 @@ if __name__ == "__main__":
     breakpoint()
     entity_ids, redirections = get_redirections(list(entities))
     outfile = f"{entities_dir}/../redirections.txt"
-    dump(entity_ids, redirections, outfile)
+    dump(outfile, entity_ids, redirections)
     
     entity_ids, labels = get_labels(list(entities))
     outfile = f"{entities_dir}/labels.txt"
-    dump(entity_ids, labels, outfile)
+    dump(outfile, entity_ids, labels)
 
     entity_ids, descriptions = get_descriptions(list(entities))
     outfile = f"{entities_dir}/descriptions.txt"
-    dump(entity_ids, descriptions, outfile)
+    dump(outfile, entity_ids, descriptions)

@@ -1,7 +1,7 @@
-import sys, json, warnings
+import sys, json, random, warnings
 sys.path.append("../")
 
-from get_descriptions_and_labels import load_entities
+from get_descriptions_and_labels import load_entities, dump
 
 from pathlib import Path
 from prepare import load
@@ -26,14 +26,49 @@ def replace_redirected_entities(data: dict | set | list):
     return data_copy
 
 
+def update_dataset(data):
+    global non_existing_entities, corrected_ents
+    
+    new_data = []
+    for i, sample in enumerate(data):
+        ids = [sample["correct_id"], sample["wrong_id"]]
+        if ids[0] in non_existing_entities:
+            continue
+        new_ids = replace_redirected_entities(ids)
+        if len(new_ids) < 2:
+            # the correct id and wrong id were redirected to the same entity id
+            # put as wrong id another random one
+            new_ids.append(
+                random.choice(
+                    list(set(corrected_ents) - {new_ids[0]})
+                )
+            )
+        if ids[1] in non_existing_entities:
+            new_ids[1] = random.choice(
+                list(set(corrected_ents) - {new_ids[0]})
+            )
+        sample["correct_id"] = new_ids[0]
+        sample["wrong_id"] = new_ids[1]
+        new_data.append(sample)
+    return new_data
+
+
 if __name__ == "__main__":
 
     Path("./corrected/").mkdir(parents=True, exist_ok=True)
 
+    # load the dataset
+    dataset = {}
+    for _set in ("train", "dev", "test"):
+        with open(f"original/wikidata-disambig-{_set}.json", "r") as f:
+            dataset[_set] = json.load(f)
+    
     entity_ids = set(load_entities("original/entity_ids.txt"))
     redirections = load("redirections.txt", as_list=False)
     descriptions = load("original/descriptions.txt", as_list=False)
     labels = load("original/labels.txt", as_list=False)
+
+    # manually labelled missing entities
     try:
         with open("original/missing_entities.json", "r") as f:
             missing_entities = json.load(f)
@@ -50,21 +85,26 @@ if __name__ == "__main__":
         if descriptions[entity] != "None":
             warnings.warn(f"Found and existing description for entity {entity}\n{entity}: {labels[entity]}\noverwriting it with\n{entity}: {metadata['label']}.")
         descriptions[entity] = metadata["description"]
-        
-    # load the dataset
-    dataset = {}
-    for _set in ("train", "dev", "test"):
-        with open(f"original/wikidata-disambig-{_set}.json", "r") as f:
-            dataset[_set] = json.load(f)
-            
+
+    # correct entity ids, labels and descriptions
     corrected_ents = replace_redirected_entities(entity_ids)
     corrected_desc = replace_redirected_entities(descriptions)
     corrected_labels = replace_redirected_entities(labels)
 
-    non_existing_entities = [e for e, d in corrected_labels.items() if d == "None"]
+    # discarding non-existent entities
+    non_existing_entities = {e for e, d in corrected_labels.items() if d == "None"}
     corrected_ents = [e for e in corrected_ents if e not in non_existing_entities]
     for entity in non_existing_entities:
         corrected_labels.pop(entity)
         corrected_desc.pop(entity)
 
+    # --> find a way to deal with missing descriptions or meaningless "Wikimedia disambiguation page" descriptions
     breakpoint()
+    dump("corrected/entity_ids.txt", corrected_ents)
+    dump("corrected/labels.txt", *zip(*corrected_labels.items()))
+    dump("corrected/descriptions.txt", *zip(*corrected_desc.items()))    
+    
+    for _set in ("train", "dev", "test"):
+        with open(f"corrected/wikidata-disambig-{_set}.json", "w") as f:
+            json.dump(update_dataset(dataset[_set]), f, indent=2)
+        
