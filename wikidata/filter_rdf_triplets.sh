@@ -3,6 +3,6 @@
 ents_file=$1
 triplets=$2
 
-new_triplets=$(grep -f $ents_file $triplets)
+new_triplets=$(grep -wf $ents_file $triplets)
 
-echo $new_triplets > "filtered_rdf_triplets.txt"
+printf "$new_triplets" > "filtered_rdf_triplets.txt"
