@@ -118,3 +118,6 @@ Number of Edges: 6651
 Number of connected Nodes: 75565
 Top 100 connected clusters size:
 [3733, 8, 7, 7, 6, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+
+
+I tried using the complete wikidata dump `latest_all` rather than the truthy one, which contained more triplets in general, but, when filtered to the entities contained in this dataset provided the same number of remaining triplets.
