@@ -83,6 +83,7 @@ if __name__ == "__main__":
     for s in ("", "-cut"):
         Path(f"{base_dir + s}/pretraining").mkdir(parents=True, exist_ok=True)
         Path(f"{base_dir + s}/link-prediction").mkdir(parents=True, exist_ok=True)
+        Path(f"{base_dir + s}/entity-linking").mkdir(parents=True, exist_ok=True)
     
     descriptions = load(args.descriptions)
     names = load(args.names)
@@ -107,6 +108,10 @@ if __name__ == "__main__":
     for _set in ("train", "dev", "test"):
         with open(f"corrected/wikidata-disambig-{_set}.json", "r") as f:
             data = json.load(f)
+            if _set == "test":
+                el_data = data.copy()
+                with open(f"{base_dir}/entity-linking/test.json", "w") as f:
+                    json.dump(el_data, f, indent=2)
         ents = extract_entities_from_disamb_data(data)
         dataset[_set] = prepare_pretraining_data(ents)
         
@@ -153,3 +158,9 @@ if __name__ == "__main__":
 
     with open(f"{base_dir}-cut/rel2idx.json", "w") as f:
         json.dump(relations, f, indent=2)
+
+    # dump the cut Entity-Linking data
+    el_data = [item for item in el_data if item["correct_id"] in entities]
+    with open(f"{base_dir}-cut/entity-linking/test.json", "w") as f:
+        json.dump(el_data, f, indent=2)
+

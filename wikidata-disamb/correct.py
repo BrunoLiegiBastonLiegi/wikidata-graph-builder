@@ -1,4 +1,6 @@
-import sys, json, random, warnings
+import sys, json, random, warnings, re
+
+from transformers import AutoTokenizer
 sys.path.append("../")
 
 from get_descriptions_and_labels import load_entities, dump
@@ -53,10 +55,60 @@ def update_dataset(data):
     return new_data
 
 
+def find_entity_span(entity_mention, entity, allow_recursion=True):
+    global tokenizer
+
+    l = entity.shape[-1]
+    i = 0
+    ent = tokenizer.decode(entity.ravel())
+    while i + l <= entity_mention.shape[-1]:
+        if all(entity_mention[0][i:i+l] == entity[0]):
+            return (i, i+l), ent
+        i += 1
+    # try with a space in front
+    if ent[0] != " " and allow_recursion:
+        ent = tokenizer(f" {ent.lower()}", add_special_tokens=False, return_tensors="pt").input_ids
+        return find_entity_span(entity_mention, ent)
+    # some labels don't precisely coincide with the words in the text
+    else:
+        # they miss the final s, n or ed for instance
+        desinences = ("s", "n", f"{ent[-1]}ed", "ic", "en", "es", "ns", "er", "ation", "ing", "ed", f"{ent[-1]}ing", "al", "\"")
+        for desinence in desinences:
+            if ent[-1] != desinence and allow_recursion:
+                span = find_entity_span(
+                    entity_mention,
+                    tokenizer(f"{ent}{desinence}", add_special_tokens=False, return_tensors="pt").input_ids,
+                    False
+                )
+                if span is not None:
+                    return span, f"{ent}{desinence}"
+
+
+def fix_string_label(sample):
+    global tokenizer
+    entity = sample["string"]
+    entity_mention = sample["text"]
+    # edit the sentence to help the tokenizer
+    # insert white space between contiguos punctuation: ., -> . ,
+    entity_mention = re.sub("(?<=[.,:;])(?=[.,:;])", r"\g<0> ", entity_mention.lower())
+    # insert white space in expression between apices: "xxx" -> " xxx "
+    entity_mention = re.sub("(?<=\s[\"])[^\"]+(?=[\"]\s)", r" \g<0> ", entity_mention)
+    if entity_mention[0] != " ":
+        entity_mention = f" {entity_mention}"
+    sample["text"] = entity_mention
+    tokenized_mention = tokenizer(entity_mention, add_special_tokens=False, return_tensors="pt")
+    tokenized_entity = tokenizer(entity.lower(), add_special_tokens=False, return_tensors="pt")
+    span, updated_label = find_entity_span(tokenized_mention.input_ids, tokenized_entity.input_ids)
+    sample["string"] = updated_label
+    return sample
+    
+
 if __name__ == "__main__":
 
     Path("./corrected/").mkdir(parents=True, exist_ok=True)
 
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    
     # load the dataset
     dataset = {}
     for _set in ("train", "dev", "test"):
