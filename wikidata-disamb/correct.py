@@ -7,6 +7,7 @@ from get_descriptions_and_labels import load_entities, dump
 
 from pathlib import Path
 from prepare import load
+from tqdm import tqdm
 
 
 def replace_redirected_entities(data: dict | set | list):
@@ -28,11 +29,13 @@ def replace_redirected_entities(data: dict | set | list):
     return data_copy
 
 
-def update_dataset(data):
+def update_dataset(data, fix_label=False):
     global non_existing_entities, corrected_ents
     
     new_data = []
-    for i, sample in enumerate(data):
+    for i, sample in tqdm(enumerate(data), total=len(data)):
+        if fix_label:
+            sample = fix_string_label(sample)
         ids = [sample["correct_id"], sample["wrong_id"]]
         if ids[0] in non_existing_entities:
             continue
@@ -72,7 +75,7 @@ def find_entity_span(entity_mention, entity, allow_recursion=True):
     # some labels don't precisely coincide with the words in the text
     else:
         # they miss the final s, n or ed for instance
-        desinences = ("s", "n", f"{ent[-1]}ed", "ic", "en", "es", "ns", "er", "ation", "ing", "ed", f"{ent[-1]}ing", "al", "\"")
+        desinences = ("s", "n", f"{ent[-1]}ed", "ic", "en", "es", "ns", "er", "ation", "ing", "ed", f"{ent[-1]}ing", "al", "\"", "ern", "h", "e", "te", "ian", "tic", "an", "rs", "nese", "lary", "vian", "ans")
         for desinence in desinences:
             if ent[-1] != desinence and allow_recursion:
                 span = find_entity_span(
@@ -92,10 +95,9 @@ def fix_string_label(sample):
     # insert white space between contiguos punctuation: ., -> . ,
     entity_mention = re.sub("(?<=[.,:;])(?=[.,:;])", r"\g<0> ", entity_mention.lower())
     # insert white space in expression between apices: "xxx" -> " xxx "
-    entity_mention = re.sub("(?<=\s[\"])[^\"]+(?=[\"]\s)", r" \g<0> ", entity_mention)
+    entity_mention = re.sub("(?<=[\s\(][\"])[^\"]+(?=[\"][\s\)])", r" \g<0> ", entity_mention)
     if entity_mention[0] != " ":
         entity_mention = f" {entity_mention}"
-    sample["text"] = entity_mention
     tokenized_mention = tokenizer(entity_mention, add_special_tokens=False, return_tensors="pt")
     tokenized_entity = tokenizer(entity.lower(), add_special_tokens=False, return_tensors="pt")
     span, updated_label = find_entity_span(tokenized_mention.input_ids, tokenized_entity.input_ids)
@@ -151,12 +153,13 @@ if __name__ == "__main__":
         corrected_desc.pop(entity)
 
     # --> find a way to deal with missing descriptions or meaningless "Wikimedia disambiguation page" descriptions
-    breakpoint()
     dump("corrected/entity_ids.txt", corrected_ents)
     dump("corrected/labels.txt", *zip(*corrected_labels.items()))
     dump("corrected/descriptions.txt", *zip(*corrected_desc.items()))    
     
     for _set in ("train", "dev", "test"):
+        print(f"> Correcting {_set} set...")
         with open(f"corrected/wikidata-disambig-{_set}.json", "w") as f:
-            json.dump(update_dataset(dataset[_set]), f, indent=2)
-        
+            fix_label = True if _set == "test" else False
+            json.dump(update_dataset(dataset[_set], fix_label), f, indent=2)
+    print(f"> Generated corrected dataset under `./corrected/`.")
