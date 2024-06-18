@@ -1,4 +1,4 @@
-import json, requests, sys, time
+import json, os, requests, sys, time
 
 from bs4 import BeautifulSoup
 from tqdm import tqdm
@@ -94,6 +94,7 @@ def generate_missing_description(entity: str, llm):
 if __name__ == "__main__":
 
     entities = list(set(load_entities(sys.argv[1])))
+    working_dir = os.path.dirname(sys.argv[1])
     batchsize = 20
     paragraphs = []
     for i in tqdm(range(0, len(entities), batchsize), total=int(len(entities)/batchsize)):  
@@ -101,7 +102,7 @@ if __name__ == "__main__":
             #print(f"\n-------------------------------------------------\n{par}\n----------------------------------------------\n")
             paragraphs.append(par)
     ent2wikipeda = dict(zip(entities, paragraphs))
-    with open("wikipedia_pages.json", "w") as f:
+    with open(f"{working_dir}/wikipedia_pages.json", "w") as f:
         json.dump(ent2wikipeda, f, indent=2)
     
     llm = Ollama(model="llama2:13b")
