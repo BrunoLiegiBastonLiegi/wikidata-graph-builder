@@ -5,6 +5,7 @@ from tqdm import tqdm
 
 from langchain_community.llms import Ollama
 from langchain.prompts import PromptTemplate
+from multiprocessing import Pool
 
 from to_graph import load_entities
 
@@ -59,25 +60,26 @@ def get_wikipedia_link(entities):
     return links
 
 
+def wikipedia_paragraph_extractor(link):
+    par = None
+    if link is not None:
+        status = None
+        while status != 200:
+            r = requests.get(link)
+            status = r.status_code
+            if status != 200:
+                print(f"-> received {status} response.")
+                time.sleep(1)
+        soup = BeautifulSoup(r.content, "html.parser")
+        ps = soup.find_all("p")
+        par = "".join(map(lambda x: x.get_text(), ps[:5]))
+    return par
+
+
 def extract_wikipedia_paragraph(entities):
     links = get_wikipedia_link(entities)
-    paragraphs = []
-    for link in links:
-        par = None
-        if link is not None:
-            r = requests.get(link)
-            soup = BeautifulSoup(r.content, "html.parser")
-            ps = soup.find_all("p")
-            par = "".join(map(lambda x: x.get_text(), ps[:5]))
-            
-            """
-            for p in ps:
-                p = p.get_text()
-                if len(p) > 50:
-                    par = p
-                    break
-            """
-        paragraphs.append(par)
+    with Pool(6) as p:
+        paragraphs = p.map(wikipedia_paragraph_extractor, links)
     return paragraphs
     
 
