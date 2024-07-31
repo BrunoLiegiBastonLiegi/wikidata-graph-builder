@@ -1,6 +1,9 @@
 # wikidata dump
 *.bz2
 
+# emacs cache
+*.py~
+
 # entity labels
 wikidata/names.txt
 wikidata/names.txt.tar.gz
